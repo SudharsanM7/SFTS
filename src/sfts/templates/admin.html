@@ -1,0 +1,280 @@
+{% extends "base.html" %}
+
+{% block content %}
+<h2>Admin Dashboard</h2>
+<div class="grid">
+  <div class="panel">
+    <h4>Operations</h4>
+    <form method="post" action="{{ url_for('admin_run_worker') }}">
+      <button type="submit">Run Transfer Worker</button>
+    </form>
+    <form method="post" action="{{ url_for('admin_backup') }}">
+      <button type="submit">Create Backup Now</button>
+    </form>
+    <p style="margin-top:0.5rem;"><a href="{{ url_for('admin_export_audit') }}">Export Audit (24h CSV)</a></p>
+    <p>Total audit entries: {{ audit_count["total"] or 0 }}</p>
+    <p>Auto cleanup deleted: {{ cleanup_result["deleted_transfers"] or 0 }}</p>
+  </div>
+  <div class="panel">
+    <h4>Generate User Key Pair</h4>
+    <form method="post" action="{{ url_for('admin_generate_keys') }}">
+      <label for="username">Username</label>
+      <input id="username" name="username" required />
+      <button type="submit">Generate Keys</button>
+    </form>
+  </div>
+</div>
+
+<div class="grid">
+  <div class="panel">
+    <h4>Storage Metrics</h4>
+    <p>Total transfers: {{ metrics["transfers"] }}</p>
+    <p>Bandwidth in: {{ metrics["bytes_in"] }} bytes</p>
+    <p>Stored bytes: {{ metrics["bytes_stored"] }}</p>
+    <p>Success rate: {{ metrics["success_rate"] }}%</p>
+    <p>Average size: {{ metrics["avg_size"] }} bytes</p>
+  </div>
+  <div class="panel">
+    <h4>Activity Heatmap (by hour)</h4>
+    <table class="table">
+      <thead><tr><th>Hour</th><th>Transfers</th></tr></thead>
+      <tbody>
+      {% for row in metrics["heatmap"] %}
+      <tr><td>{{ row["hour"] }}</td><td>{{ row["total"] }}</td></tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<div class="grid">
+  <div class="panel">
+    <h4>Quota Management</h4>
+    <form method="post" action="{{ url_for('admin_set_quota') }}">
+      <label>Username</label>
+      <input name="username" required />
+      <label>Daily quota bytes</label>
+      <input name="daily_quota_bytes" type="number" value="2147483648" />
+      <label>Monthly quota bytes</label>
+      <input name="monthly_quota_bytes" type="number" value="21474836480" />
+      <label>Storage quota bytes</label>
+      <input name="storage_quota_bytes" type="number" value="10737418240" />
+      <button type="submit">Update Quotas</button>
+    </form>
+  </div>
+  <div class="panel">
+    <h4>Restore Backup</h4>
+    <form method="post" action="{{ url_for('admin_restore_backup') }}">
+      <label>Backup file path</label>
+      <input name="backup_path" placeholder="backups/sfts_backup_YYYYMMDD_HHMMSS.db" required />
+      <button type="submit">Restore Database</button>
+    </form>
+    <h5>Recent Backup Jobs</h5>
+    <ul>
+      {% for row in backup_jobs %}
+      <li>#{{ row["id"] }} {{ row["status"] }} {{ row["output_path"] or row["error"] or "" }}</li>
+      {% endfor %}
+    </ul>
+  </div>
+</div>
+
+<h3>Email Templates</h3>
+<div class="grid">
+  {% for t in templates %}
+  <div class="panel">
+    <form method="post" action="{{ url_for('admin_email_template') }}">
+      <input type="hidden" name="name" value="{{ t['name'] }}" />
+      <p><strong>{{ t["name"] }}</strong></p>
+      <label>Subject</label>
+      <input name="subject" value="{{ t['subject'] }}" required />
+      <label>HTML Body</label>
+      <textarea name="body_html" rows="5">{{ t['body_html'] }}</textarea>
+      <label><input type="checkbox" name="enabled" {% if t['enabled'] %}checked{% endif %} style="width:auto;" /> Enabled</label>
+      <button type="submit">Save Template</button>
+    </form>
+  </div>
+  {% endfor %}
+</div>
+
+<div class="grid">
+  <div class="panel">
+    <h4>Transfers</h4>
+    <p>Total: {{ totals["total"] or 0 }}</p>
+    <p>Failed: {{ totals["failed"] or 0 }}</p>
+  </div>
+  <div class="panel">
+    <h4>Failed Logins</h4>
+    <p>Users with failures: {{ failed_logins["total"] or 0 }}</p>
+  </div>
+  <div class="panel">
+    <h4>DDoS Detection</h4>
+    <p>Suspect windows: {{ ddos_stats["suspect_windows"] or 0 }}</p>
+    <p>Critical windows: {{ ddos_stats["critical_windows"] or 0 }}</p>
+    <p>Suspect IPs: {{ ddos_stats["suspect_ips"] or 0 }}</p>
+    <p>Peak observed RPM: {{ ddos_stats["peak_observed_rpm"] or 0 }}</p>
+    <p>Blocked IPs: {{ ddos_stats["blocked_ips"] or 0 }}</p>
+  </div>
+</div>
+
+<h3>Security Events</h3>
+{% if events %}
+  <ul>
+    {% for row in events %}
+      <li>{{ row["event_type"] }}: {{ row["total"] }}</li>
+    {% endfor %}
+  </ul>
+{% else %}
+  <p>No security events recorded.</p>
+{% endif %}
+
+<h3>Request Frequency (Top IPs)</h3>
+{% if frequency_stats %}
+  <table class="table">
+    <thead>
+      <tr>
+        <th>IP Address</th>
+        <th>Total Requests</th>
+        <th>Peak RPM</th>
+        <th>Active Windows</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for row in frequency_stats %}
+        <tr>
+          <td>{{ row["ip_address"] }}</td>
+          <td>{{ row["total_requests"] }}</td>
+          <td>{{ row["peak_rpm"] }}</td>
+          <td>{{ row["active_windows"] }}</td>
+        </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+{% else %}
+  <p>No request-frequency data in the lookback window.</p>
+{% endif %}
+
+<h3>MITM Security Scenarios</h3>
+<table class="table">
+  <thead>
+    <tr>
+      <th>Scenario</th>
+      <th>Status</th>
+      <th>Details</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for item in mitm_results %}
+      <tr>
+        <td>{{ item.scenario }}</td>
+        <td><span class="badge">{{ "Protected" if item.success else "Failed" }}</span></td>
+        <td>{{ item.details }}</td>
+      </tr>
+    {% endfor %}
+  </tbody>
+</table>
+
+<h3>Vulnerability Checks</h3>
+<table class="table">
+  <thead>
+    <tr>
+      <th>Check</th>
+      <th>Status</th>
+      <th>Severity</th>
+      <th>Details</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for check in vulnerabilities %}
+      <tr>
+        <td>{{ check.name }}</td>
+        <td><span class="badge">{{ check.status }}</span></td>
+        <td>{{ check.severity }}</td>
+        <td>{{ check.details }}</td>
+      </tr>
+    {% endfor %}
+  </tbody>
+</table>
+
+<h3>Recent Security Events</h3>
+{% if recent_events %}
+  <table class="table">
+    <thead>
+      <tr>
+        <th>Event</th>
+        <th>Details</th>
+        <th>Time</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for row in recent_events %}
+        <tr>
+          <td>{{ row["event_type"] }}</td>
+          <td>{{ row["details"] or "-" }}</td>
+          <td>{{ row["created_at"] }}</td>
+        </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+{% else %}
+  <p>No recent security events.</p>
+{% endif %}
+
+<h3>Security Alerts</h3>
+{% if alerts %}
+  <table class="table">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Severity</th>
+        <th>Status</th>
+        <th>Details</th>
+        <th>Time</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for row in alerts %}
+        <tr>
+          <td>{{ row["event_type"] }}</td>
+          <td>{{ row["severity"] }}</td>
+          <td>{{ row["status"] }}</td>
+          <td>{{ row["details"] or "-" }}</td>
+          <td>{{ row["created_at"] }}</td>
+        </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+{% else %}
+  <p>No security alerts.</p>
+{% endif %}
+
+<h3>Blocked IP Quarantine</h3>
+{% if blocked_ips %}
+  <table class="table">
+    <thead>
+      <tr>
+        <th>IP Address</th>
+        <th>Blocked Until</th>
+        <th>Reason</th>
+        <th>Action</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for row in blocked_ips %}
+        <tr>
+          <td>{{ row["ip_address"] }}</td>
+          <td>{{ row["blocked_until"] }}</td>
+          <td>{{ row["reason"] or "-" }}</td>
+          <td>
+            <form method="post" action="{{ url_for('admin_unblock_ip') }}">
+              <input type="hidden" name="ip_address" value="{{ row['ip_address'] }}" />
+              <button type="submit">Unblock</button>
+            </form>
+          </td>
+        </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+{% else %}
+  <p>No currently blocked IP addresses.</p>
+{% endif %}
+{% endblock %}

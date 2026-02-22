@@ -1,0 +1,137 @@
+{% extends "base.html" %}
+
+{% block content %}
+<h2>Send File</h2>
+<p class="muted">Drag and drop files/folders, add secure note, set expiration, optional share link.</p>
+<form method="post" enctype="multipart/form-data">
+  <label for="recipient">Recipient User ID</label>
+  <input id="recipient" name="recipient" required />
+  <label for="dropzone">Files / Folder</label>
+  <div id="dropzone" class="panel" style="border-style:dashed; text-align:center; padding:1.25rem;">Drop files here or click to select</div>
+  <input id="file" name="file" type="file" />
+  <input id="files" name="files" type="file" multiple webkitdirectory directory />
+  <div id="preview" class="panel" style="margin-top:0.75rem;"></div>
+
+  <label for="ttl_hours">Transfer Expiration</label>
+  <select id="ttl_hours" name="ttl_hours">
+    <option value="1">1 hour</option>
+    <option value="24" {% if default_ttl == 24 %}selected{% endif %}>24 hours</option>
+    <option value="168">7 days</option>
+    <option value="720">30 days</option>
+  </select>
+
+  <label for="note">Secure Note (encrypted)</label>
+  <textarea id="note" name="note" rows="3" placeholder="Optional note for recipient"></textarea>
+
+  <label for="compress">Compression</label>
+  <select id="compress" name="compress">
+    <option value="1" {% if default_compress %}selected{% endif %}>Enabled</option>
+    <option value="0" {% if not default_compress %}selected{% endif %}>Disabled</option>
+  </select>
+
+  <label for="transfer_secret">Transfer Secret (share securely with recipient)</label>
+  <input id="transfer_secret" name="transfer_secret" type="password" required />
+
+  <label><input type="checkbox" name="share_enabled" id="share_enabled" style="width:auto;" /> Create share link</label>
+  <div class="inline">
+    <div>
+      <label for="share_password">Share Link Password (optional)</label>
+      <input id="share_password" name="share_password" type="password" />
+    </div>
+    <div>
+      <label for="share_max_uses">Share Link Max Uses</label>
+      <input id="share_max_uses" name="share_max_uses" type="number" min="1" max="10" value="1" />
+    </div>
+  </div>
+
+  <div class="panel" style="margin-top:0.75rem;">
+    <div class="muted">Upload progress</div>
+    <progress id="upload_progress" value="0" max="100" style="width:100%;"></progress>
+    <div id="upload_stats" class="muted">0% • 0 B/s • ETA --</div>
+  </div>
+
+  <button type="submit">Encrypt & Prepare</button>
+</form>
+<script>
+  (() => {
+    const dropzone = document.getElementById("dropzone");
+    const fileInput = document.getElementById("file");
+    const filesInput = document.getElementById("files");
+    const preview = document.getElementById("preview");
+    const form = document.querySelector("form");
+    const progress = document.getElementById("upload_progress");
+    const stats = document.getElementById("upload_stats");
+
+    const sizeLabel = (bytes) => {
+      if (bytes < 1024) return `${bytes} B`;
+      if (bytes < 1024*1024) return `${(bytes/1024).toFixed(1)} KB`;
+      if (bytes < 1024*1024*1024) return `${(bytes/1024/1024).toFixed(1)} MB`;
+      return `${(bytes/1024/1024/1024).toFixed(2)} GB`;
+    };
+
+    const renderPreview = (files) => {
+      if (!files || files.length === 0) {
+        preview.innerHTML = "<span class='muted'>No files selected.</span>";
+        return;
+      }
+      const rows = Array.from(files).slice(0, 20).map((f) => `<li>${f.name} (${sizeLabel(f.size)})</li>`).join("");
+      preview.innerHTML = `<strong>Selected files: ${files.length}</strong><ul>${rows}</ul>`;
+    };
+
+    ["dragenter", "dragover"].forEach((evt) => dropzone.addEventListener(evt, (e) => {
+      e.preventDefault();
+      dropzone.style.borderColor = "var(--accent)";
+    }));
+    ["dragleave", "drop"].forEach((evt) => dropzone.addEventListener(evt, (e) => {
+      e.preventDefault();
+      dropzone.style.borderColor = "var(--border)";
+    }));
+
+    dropzone.addEventListener("click", () => fileInput.click());
+    dropzone.addEventListener("drop", (e) => {
+      const files = e.dataTransfer.files;
+      fileInput.files = files;
+      renderPreview(files);
+    });
+    fileInput.addEventListener("change", () => renderPreview(fileInput.files));
+    filesInput.addEventListener("change", () => renderPreview(filesInput.files));
+
+    form.addEventListener("submit", (e) => {
+      e.preventDefault();
+      const fd = new FormData(form);
+      const xhr = new XMLHttpRequest();
+      const started = Date.now();
+      xhr.upload.onprogress = (ev) => {
+        if (!ev.lengthComputable) return;
+        const pct = Math.round((ev.loaded / ev.total) * 100);
+        progress.value = pct;
+        const elapsed = Math.max((Date.now() - started) / 1000, 0.1);
+        const speed = ev.loaded / elapsed;
+        const remaining = Math.max(ev.total - ev.loaded, 0);
+        const eta = speed > 0 ? Math.round(remaining / speed) : 0;
+        stats.textContent = `${pct}% • ${sizeLabel(speed)}/s • ETA ${eta}s • ${sizeLabel(ev.loaded)} / ${sizeLabel(ev.total)}`;
+      };
+      xhr.onload = () => {
+        if (xhr.status >= 200 && xhr.status < 400) {
+          let payload = null;
+          try { payload = JSON.parse(xhr.responseText || "{}"); } catch (_) {}
+          if (payload && payload.ok) {
+            window.location.href = payload.redirect || "{{ url_for('history') }}";
+            return;
+          }
+          SFTS.toast("Upload", (payload && payload.message) || "Transfer request did not complete", "error");
+          return;
+        }
+        let errorPayload = null;
+        try { errorPayload = JSON.parse(xhr.responseText || "{}"); } catch (_) {}
+        SFTS.toast("Upload", (errorPayload && errorPayload.message) || "Transfer request failed", "error");
+      };
+      xhr.onerror = () => SFTS.toast("Upload", "Network error", "error");
+      xhr.open("POST", "{{ url_for('send') }}", true);
+      xhr.setRequestHeader("X-Requested-With", "fetch");
+      xhr.send(fd);
+    });
+    renderPreview([]);
+  })();
+</script>
+{% endblock %}

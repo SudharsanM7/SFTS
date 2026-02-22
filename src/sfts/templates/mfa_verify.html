@@ -1,0 +1,11 @@
+{% extends "base.html" %}
+
+{% block content %}
+<h2>MFA Verification</h2>
+<p>Enter your 6-digit authenticator code or a backup code.</p>
+<form method="post">
+  <label for="code">MFA Code</label>
+  <input id="code" name="code" required />
+  <button type="submit">Verify</button>
+</form>
+{% endblock %}

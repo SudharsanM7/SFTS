@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+
+{% block content %}
+<h2>Transfer History</h2>
+<form method="get" class="inline" style="margin-bottom:0.75rem;">
+  <input name="q" placeholder="Search filename/date" value="{{ q or '' }}" />
+  <input name="recipient" placeholder="Recipient" value="{{ recipient or '' }}" />
+  <select name="sort">
+    <option value="date_desc" {% if sort_by == 'date_desc' %}selected{% endif %}>Date ↓</option>
+    <option value="date_asc" {% if sort_by == 'date_asc' %}selected{% endif %}>Date ↑</option>
+    <option value="size_desc" {% if sort_by == 'size_desc' %}selected{% endif %}>Size ↓</option>
+    <option value="size_asc" {% if sort_by == 'size_asc' %}selected{% endif %}>Size ↑</option>
+    <option value="sender" {% if sort_by == 'sender' %}selected{% endif %}>Recipient</option>
+  </select>
+  <button class="small-btn" type="submit">Apply</button>
+</form>
+{% if transfers %}
+  <table class="table">
+    <thead>
+      <tr>
+        <th>File</th>
+        <th>Recipient</th>
+        <th>Size</th>
+        <th>Status</th>
+        <th>Created</th>
+        <th>Expires</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for row in transfers %}
+        <tr>
+          <td>{{ row["filename"] }}</td>
+          <td>{{ row["recipient_name"] }}</td>
+          <td>{{ row["file_size"] }}</td>
+          <td><span class="badge">{{ row["status"] }}</span></td>
+          <td>{{ row["created_at"] }}</td>
+          <td>{{ row["transfer_expires_at"] or '-' }}</td>
+        </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+{% else %}
+  <p>No outgoing transfers yet.</p>
+{% endif %}
+{% endblock %}

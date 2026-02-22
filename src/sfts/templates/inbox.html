@@ -1,0 +1,51 @@
+{% extends "base.html" %}
+
+{% block content %}
+<h2>Inbox</h2>
+<form method="get" class="inline" style="margin-bottom:0.75rem;">
+  <input name="q" placeholder="Search filename/date" value="{{ q or '' }}" />
+  <select name="status">
+    <option value="all" {% if status_filter == 'all' %}selected{% endif %}>All statuses</option>
+    <option value="queued" {% if status_filter == 'queued' %}selected{% endif %}>Pending</option>
+    <option value="received" {% if status_filter == 'received' %}selected{% endif %}>Downloaded</option>
+    <option value="failed" {% if status_filter == 'failed' %}selected{% endif %}>Failed</option>
+    <option value="deleted" {% if status_filter == 'deleted' %}selected{% endif %}>Expired/Deleted</option>
+  </select>
+  <select name="sort">
+    <option value="date_desc" {% if sort_by == 'date_desc' %}selected{% endif %}>Date ↓</option>
+    <option value="date_asc" {% if sort_by == 'date_asc' %}selected{% endif %}>Date ↑</option>
+    <option value="size_desc" {% if sort_by == 'size_desc' %}selected{% endif %}>Size ↓</option>
+    <option value="size_asc" {% if sort_by == 'size_asc' %}selected{% endif %}>Size ↑</option>
+    <option value="sender" {% if sort_by == 'sender' %}selected{% endif %}>Sender</option>
+  </select>
+  <button class="small-btn" type="submit">Apply</button>
+</form>
+{% if transfers %}
+  <table class="table">
+    <thead>
+      <tr>
+        <th>File</th>
+        <th>Sender</th>
+        <th>Size</th>
+        <th>Status</th>
+        <th>Received</th>
+        <th>Expires</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for row in transfers %}
+        <tr>
+          <td>{{ row["filename"] }}</td>
+          <td>{{ row["sender_name"] }}</td>
+          <td>{{ row["file_size"] }}</td>
+          <td><span class="badge">{{ row["status"] }}</span></td>
+          <td>{{ row["created_at"] }}</td>
+          <td>{{ row["transfer_expires_at"] or '-' }}</td>
+        </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+{% else %}
+  <p>No incoming transfers yet.</p>
+{% endif %}
+{% endblock %}

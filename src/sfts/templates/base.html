@@ -1,0 +1,259 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>SFTS</title>
+  <style>
+    :root {
+      --bg: #0b1220;
+      --surface: #111827;
+      --card: #0f172a;
+      --text: #e5e7eb;
+      --muted: #9ca3af;
+      --accent: #6366f1;
+      --accent-2: #22d3ee;
+      --success: #22c55e;
+      --danger: #ef4444;
+      --border: #1f2937;
+      --toast: #0f172a;
+    }
+    :root[data-theme="light"] {
+      --bg: #eef2ff;
+      --surface: #ffffff;
+      --card: #ffffff;
+      --text: #0f172a;
+      --muted: #475569;
+      --accent: #4f46e5;
+      --accent-2: #0891b2;
+      --success: #15803d;
+      --danger: #dc2626;
+      --border: #cbd5e1;
+      --toast: #ffffff;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: "Segoe UI", system-ui, -apple-system, sans-serif;
+      color: var(--text);
+      background: radial-gradient(circle at top, var(--surface) 0%, var(--bg) 40%);
+    }
+    .layout { display: flex; min-height: 100vh; }
+    .sidebar {
+      width: 240px;
+      background: var(--surface);
+      border-right: 1px solid var(--border);
+      padding: 1.5rem 1rem;
+    }
+    .brand {
+      font-weight: 700;
+      font-size: 1.1rem;
+      margin-bottom: 2rem;
+      color: var(--accent-2);
+    }
+    .nav a {
+      display: block;
+      color: var(--text);
+      text-decoration: none;
+      padding: 0.6rem 0.8rem;
+      border-radius: 8px;
+      margin-bottom: 0.25rem;
+    }
+    .nav a:hover { background: var(--bg); }
+    .topbar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; }
+    .theme-toggle { width: auto; padding: 0.45rem 0.75rem; margin: 0; }
+    .content { flex: 1; padding: 2rem; }
+    .card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      padding: 1.5rem;
+      border-radius: 16px;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+    }
+    .flash { display: none; padding: 0.75rem 1rem; border-radius: 10px; margin-bottom: 1rem; }
+    .flash.success { background: rgba(34, 197, 94, 0.15); color: var(--success); }
+    .flash.error { background: rgba(239, 68, 68, 0.15); color: var(--danger); }
+    .flash.info { background: rgba(99, 102, 241, 0.15); color: var(--accent); }
+    form label { display: block; margin: 0.75rem 0 0.25rem; color: var(--muted); }
+    input, select, textarea, button { width: 100%; padding: 0.7rem; border-radius: 10px; }
+    input { border: 1px solid #1f2937; background: #0b1220; color: var(--text); }
+    select, textarea { border: 1px solid var(--border); background: var(--bg); color: var(--text); }
+    button {
+      margin-top: 1rem;
+      background: linear-gradient(90deg, var(--accent), var(--accent-2));
+      color: white;
+      border: 0;
+      font-weight: 600;
+      cursor: pointer;
+    }
+    .table { width: 100%; border-collapse: collapse; margin-top: 1rem; }
+    .table th, .table td { text-align: left; padding: 0.6rem; border-bottom: 1px solid #1f2937; }
+    .badge {
+      display: inline-block;
+      padding: 0.2rem 0.6rem;
+      border-radius: 999px;
+      background: rgba(99, 102, 241, 0.2);
+      color: var(--accent);
+    }
+    .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1rem; }
+    .panel { background: #0b1220; border: 1px solid #1f2937; border-radius: 12px; padding: 1rem; }
+    .panel { background: var(--bg); border: 1px solid var(--border); }
+    .inline { display: flex; gap: 0.75rem; align-items: center; flex-wrap: wrap; }
+    .inline > * { flex: 1; min-width: 140px; }
+    .small-btn { width: auto; margin-top: 0; }
+    .pill { display: inline-block; padding: 0.2rem 0.5rem; border-radius: 999px; background: rgba(99, 102, 241, 0.2); }
+    #toast-root { position: fixed; top: 1rem; right: 1rem; width: 340px; z-index: 9999; }
+    .toast {
+      background: var(--toast);
+      border: 1px solid var(--border);
+      border-left: 4px solid var(--accent);
+      border-radius: 10px;
+      margin-bottom: 0.5rem;
+      padding: 0.75rem;
+      box-shadow: 0 8px 18px rgba(0,0,0,0.25);
+    }
+    .toast.success { border-left-color: var(--success); }
+    .toast.error { border-left-color: var(--danger); }
+    .toast-title { font-weight: 700; margin-bottom: 0.2rem; }
+    .muted { color: var(--muted); }
+  </style>
+</head>
+<body data-session-warn="{{ session_warning_seconds|default(120) }}">
+  <div id="toast-root"></div>
+  <div class="layout">
+    <aside class="sidebar">
+      <div class="brand">SFTS Secure</div>
+      <button class="theme-toggle" type="button" onclick="SFTS.toggleTheme()">Toggle Theme</button>
+      <nav class="nav">
+        <a href="{{ url_for('index') }}">Home</a>
+        {% if session.get('session_token') %}
+          <a href="{{ url_for('dashboard') }}">Dashboard</a>
+          <a href="{{ url_for('mfa_setup') }}">MFA Setup</a>
+          <a href="{{ url_for('send') }}">Send</a>
+          <a href="{{ url_for('receive') }}">Receive</a>
+          <a href="{{ url_for('inbox') }}">Inbox</a>
+          <a href="{{ url_for('history') }}">History</a>
+          <a href="{{ url_for('sessions_page') }}">Sessions</a>
+          <a href="{{ url_for('api_docs') }}">API Docs</a>
+          <a href="{{ url_for('admin') }}">Admin</a>
+          <a href="{{ url_for('logout') }}">Logout</a>
+        {% else %}
+          <a href="{{ url_for('login') }}">Login</a>
+          <a href="{{ url_for('register') }}">Register</a>
+        {% endif %}
+      </nav>
+    </aside>
+    <main class="content">
+      <div class="topbar">
+        <div><span class="pill" id="live-badge">Live: disconnected</span></div>
+        <button class="small-btn" type="button" onclick="SFTS.markNotificationsRead()">Mark Notifications Read</button>
+      </div>
+      {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+          {% for category, message in messages %}
+            <div class="flash {{ category }}">{{ message }}</div>
+          {% endfor %}
+        {% endif %}
+      {% endwith %}
+
+      <div class="card">
+        {% block content %}{% endblock %}
+      </div>
+    </main>
+  </div>
+  <script>
+    const SFTS = {
+      initTheme() {
+        const saved = localStorage.getItem("sfts-theme");
+        const prefersDark = window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches;
+        const theme = saved || (prefersDark ? "dark" : "light");
+        document.documentElement.setAttribute("data-theme", theme);
+      },
+      toggleTheme() {
+        const current = document.documentElement.getAttribute("data-theme") || "dark";
+        const next = current === "dark" ? "light" : "dark";
+        document.documentElement.setAttribute("data-theme", next);
+        localStorage.setItem("sfts-theme", next);
+      },
+      toast(title, message, type = "info", ttl = 4500, actionText = "", actionFn = null) {
+        const root = document.getElementById("toast-root");
+        const node = document.createElement("div");
+        node.className = `toast ${type}`;
+        node.innerHTML = `<div class="toast-title">${title}</div><div>${message}</div>`;
+        if (actionText && typeof actionFn === "function") {
+          const btn = document.createElement("button");
+          btn.className = "small-btn";
+          btn.textContent = actionText;
+          btn.onclick = actionFn;
+          node.appendChild(btn);
+        }
+        root.appendChild(node);
+        setTimeout(() => node.remove(), ttl);
+      },
+      wireFlashToasts() {
+        document.querySelectorAll(".flash").forEach((el) => {
+          const type = el.classList.contains("error") ? "error" : (el.classList.contains("success") ? "success" : "info");
+          SFTS.toast(type === "error" ? "Error" : "Notice", el.textContent, type);
+        });
+      },
+      connectEvents() {
+        if (!window.EventSource || !document.body.innerHTML.includes("Logout")) {
+          return;
+        }
+        const badge = document.getElementById("live-badge");
+        const source = new EventSource("{{ url_for('events') }}");
+        source.onopen = () => { if (badge) badge.textContent = "Live: connected"; };
+        source.onerror = () => { if (badge) badge.textContent = "Live: disconnected"; };
+        source.onmessage = (evt) => {
+          try {
+            const payload = JSON.parse(evt.data);
+            if (badge) {
+              badge.textContent = `Live: connected • inbox ${payload.pending_inbox} • unread ${payload.unread}`;
+            }
+            if (payload.notifications && payload.notifications.length > 0) {
+              const latest = payload.notifications[0];
+              SFTS.toast(latest.title || "Notification", latest.message || "", "info", 4000, "Inbox", () => window.location.href = "{{ url_for('inbox') }}");
+            }
+          } catch (_) {}
+        };
+      },
+      async markNotificationsRead() {
+        try {
+          const res = await fetch("{{ url_for('notifications_read') }}", { method: "POST", headers: { "X-Requested-With": "fetch" } });
+          const data = await res.json();
+          if (data.ok) {
+            SFTS.toast("Notifications", `Marked ${data.count} as read`, "success");
+          }
+        } catch (_) {
+          SFTS.toast("Notifications", "Unable to mark notifications", "error");
+        }
+      },
+      sessionWarningShown: false,
+      startSessionWatcher() {
+        if (!document.body.innerHTML.includes("Logout")) {
+          return;
+        }
+        setInterval(async () => {
+          try {
+            const res = await fetch("{{ url_for('api_session_status') }}");
+            if (!res.ok) {
+              return;
+            }
+            const data = await res.json();
+            const warnThreshold = Number(document.body.dataset.sessionWarn || 120);
+            if (!SFTS.sessionWarningShown && data.remaining_seconds <= warnThreshold) {
+              SFTS.sessionWarningShown = true;
+              SFTS.toast("Session", "Session will expire soon. Save your work.", "info", 7000, "Sessions", () => window.location.href = "{{ url_for('sessions_page') }}");
+            }
+          } catch (_) {}
+        }, 15000);
+      }
+    };
+    window.SFTS = SFTS;
+    SFTS.initTheme();
+    SFTS.wireFlashToasts();
+    SFTS.connectEvents();
+    SFTS.startSessionWatcher();
+  </script>
+</body>
+</html>

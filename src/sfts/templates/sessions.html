@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+
+{% block content %}
+<h2>Session Management</h2>
+<p class="muted">Review active sessions and revoke access from unknown devices.</p>
+<form method="post" action="{{ url_for('sessions_revoke_others') }}">
+  <button type="submit">Revoke All Other Sessions</button>
+</form>
+{% if sessions %}
+  <table class="table">
+    <thead>
+      <tr>
+        <th>Session</th>
+        <th>IP</th>
+        <th>User Agent</th>
+        <th>Created</th>
+        <th>Expires</th>
+        <th>Action</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for row in sessions %}
+      <tr>
+        <td>{% if row["session_token"] == current_token %}<span class="badge">Current</span>{% else %}{{ row["id"] }}{% endif %}</td>
+        <td>{{ row["ip_address"] or '-' }}</td>
+        <td>{{ row["user_agent"] or '-' }}</td>
+        <td>{{ row["created_at"] }}</td>
+        <td>{{ row["expires_at"] }}</td>
+        <td>
+          {% if row["session_token"] != current_token %}
+          <form method="post" action="{{ url_for('sessions_revoke') }}">
+            <input type="hidden" name="session_id" value="{{ row['id'] }}" />
+            <button class="small-btn" type="submit">Revoke</button>
+          </form>
+          {% else %}
+          -
+          {% endif %}
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+{% else %}
+<p>No sessions found.</p>
+{% endif %}
+{% endblock %}

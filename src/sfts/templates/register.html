@@ -1,0 +1,52 @@
+{% extends "base.html" %}
+
+{% block content %}
+<h2>Register</h2>
+<form method="post">
+  <label for="username">Username</label>
+  <input id="username" name="username" required />
+  <label for="email">Email (for notifications)</label>
+  <input id="email" name="email" type="email" />
+  <label for="password">Password</label>
+  <input id="password" name="password" type="password" required />
+  <div class="panel" style="margin-top:0.5rem;">
+    <div>Password strength: <strong id="strength_label">Very weak</strong></div>
+    <progress id="strength_bar" max="100" value="0" style="width:100%;"></progress>
+    <div id="strength_rules" class="muted">Use 12+ chars with upper, lower, digit, symbol.</div>
+  </div>
+  <button type="submit">Register</button>
+</form>
+<script>
+  (() => {
+    const input = document.getElementById("password");
+    const bar = document.getElementById("strength_bar");
+    const label = document.getElementById("strength_label");
+    const rules = document.getElementById("strength_rules");
+
+    const scorePassword = (pwd) => {
+      let score = 0;
+      if (pwd.length >= 12) score += 30;
+      if (/[A-Z]/.test(pwd)) score += 20;
+      if (/[a-z]/.test(pwd)) score += 20;
+      if (/\d/.test(pwd)) score += 15;
+      if (/[^A-Za-z0-9]/.test(pwd)) score += 15;
+      return Math.min(100, score);
+    };
+
+    const labelFor = (score) => {
+      if (score < 30) return "Very weak";
+      if (score < 50) return "Weak";
+      if (score < 75) return "Moderate";
+      if (score < 90) return "Strong";
+      return "Very strong";
+    };
+
+    input.addEventListener("input", () => {
+      const score = scorePassword(input.value);
+      bar.value = score;
+      label.textContent = labelFor(score);
+      rules.textContent = score >= 75 ? "Looks good." : "Use 12+ chars with upper, lower, digit, symbol.";
+    });
+  })();
+</script>
+{% endblock %}

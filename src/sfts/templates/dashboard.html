@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+
+{% block content %}
+<h2>Dashboard</h2>
+<p>Welcome, {{ username }}.</p>
+<p>Use Send to target a recipient ID and Receive to verify and decrypt.</p>
+<p class="muted">Session warning threshold: {{ session_warning_seconds }} seconds before expiry.</p>
+{% if notices %}
+	<h3>Unread Notifications</h3>
+	<ul>
+	{% for n in notices %}
+		<li><strong>{{ n["title"] }}</strong> — {{ n["message"] }} <span class="muted">({{ n["created_at"] }})</span></li>
+	{% endfor %}
+	</ul>
+{% endif %}
+{% endblock %}

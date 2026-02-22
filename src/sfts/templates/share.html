@@ -1,0 +1,18 @@
+{% extends "base.html" %}
+
+{% block content %}
+<h2>Share Link Download</h2>
+{% if valid %}
+<form method="post">
+  <label for="password">Link Password (if set)</label>
+  <input id="password" name="password" type="password" />
+  <label for="transfer_secret">Transfer Secret</label>
+  <input id="transfer_secret" name="transfer_secret" type="password" required />
+  <label for="output_name">Output Filename</label>
+  <input id="output_name" name="output_name" value="downloaded_file" />
+  <button type="submit">Decrypt Download</button>
+</form>
+{% else %}
+<p>Share link is invalid or expired.</p>
+{% endif %}
+{% endblock %}

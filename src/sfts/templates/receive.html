@@ -1,0 +1,19 @@
+{% extends "base.html" %}
+
+{% block content %}
+<h2>Receive File</h2>
+{% if pending %}
+  <p>Pending file: {{ filename }}</p>
+  <p class="muted">Expires at: {{ expires_at or '-' }}</p>
+  <form method="post">
+    <input type="hidden" name="transfer_id" value="{{ transfer_id }}" />
+    <label for="output_name">Output Filename</label>
+    <input id="output_name" name="output_name" value="{{ filename }}" required />
+    <label for="transfer_secret">Transfer Secret</label>
+    <input id="transfer_secret" name="transfer_secret" type="password" required />
+    <button type="submit">Decrypt & Verify</button>
+  </form>
+{% else %}
+  <p>No pending transfer. Send a file first.</p>
+{% endif %}
+{% endblock %}

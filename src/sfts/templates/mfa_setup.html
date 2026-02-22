@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+
+{% block content %}
+<h2>MFA Setup</h2>
+{% if enabled %}
+  <p>MFA is already enabled on your account.</p>
+{% else %}
+  <p>Step 1: Generate secret and backup codes.</p>
+  <form method="post">
+    <input type="hidden" name="action" value="init" />
+    <button type="submit">Generate MFA Secret</button>
+  </form>
+
+  {% if secret %}
+    <hr />
+    {% if qr_data_uri %}
+      <p>Scan this QR code with Google Authenticator, Microsoft Authenticator, Authy, or similar app:</p>
+      <p><img src="{{ qr_data_uri }}" alt="MFA QR Code" style="max-width: 240px; border-radius: 8px;" /></p>
+    {% endif %}
+    <p><strong>Secret:</strong> {{ secret }}</p>
+    <p><strong>Manual setup URI:</strong> {{ uri }}</p>
+    <p>Backup codes (save these now):</p>
+    <ul>
+      {% for code in backup_codes %}
+        <li>{{ code }}</li>
+      {% endfor %}
+    </ul>
+
+    <form method="post">
+      <input type="hidden" name="action" value="enable" />
+      <label for="code">Authenticator Code</label>
+      <input id="code" name="code" required />
+      <button type="submit">Enable MFA</button>
+    </form>
+  {% endif %}
+{% endif %}
+{% endblock %}
